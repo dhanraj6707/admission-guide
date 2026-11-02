@@ -6,7 +6,7 @@ st.set_page_config(page_title="AI Admission Guide Chatbot", page_icon="🎓")
 
 # Key and model come from Streamlit Secrets (never written in the code)
 API_KEY = st.secrets.get("GEMINI_API_KEY")
-MODEL = st.secrets.get("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = st.secrets.get("GEMINI_MODEL", "gemini-flash-latest")
 
 SYSTEM_PROMPT = """You are 'AI Admission Guide', a friendly assistant that helps students
 and parents in India understand admission processes, mainly engineering (MHT-CET, JEE, CAP rounds)
@@ -29,7 +29,7 @@ if not API_KEY:
     st.error("Setup error: GEMINI_API_KEY is not set in the app secrets.")
     st.stop()
 
-client = genai.Client(api_key=API_KEY)
+client = genai.Client(api_key=API_KEY, http_options=types.HttpOptions(timeout=40000, retry_options=types.HttpRetryOptions(attempts=1)))
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -75,12 +75,11 @@ if question is not None:
                         config=types.GenerateContentConfig(
                             system_instruction=SYSTEM_PROMPT,
                             temperature=0.4,
-                            max_output_tokens=800,
                         ),
                     )
                 answer = resp.text or "I could not generate an answer. Please rephrase your question."
-            except Exception:
-                answer = ("Sorry, the service is busy or the daily free limit is reached. "
-                          "Please wait a minute and try again.")
+            except Exception as e:
+                answer = ("Sorry, I could not get an answer right now.\n\n"
+                          f"Technical details: `{str(e)[:300]}`")
             st.markdown(answer)
         st.session_state.messages.append({"role": "assistant", "content": answer})
